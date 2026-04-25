@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScholarAI — Your AI Study Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#05091a;--ink2:#0d1530;--ink3:#182040;
+  --amber:#f5a623;--amber2:#e8930e;--amber-soft:#fff8ec;
+  --cream:#f0ebe0;--cream2:#e8e2d5;
+  --text:#1a1a2e;--muted:#6b7280;--muted2:#9ca3af;
+  --white:#ffffff;
+  --success:#10b981;--danger:#ef4444;--info:#3b82f6;
+  --radius:12px;--radius-sm:8px;--radius-lg:20px;
+  --shadow:0 4px 24px rgba(5,9,26,.12);
+  --shadow-lg:0 12px 48px rgba(5,9,26,.18);
+  font-family:'Nunito',sans-serif;
+}
+body{background:var(--cream);color:var(--text);min-height:100vh;overflow-x:hidden}
+.hidden{display:none!important}
+
+/* ---- NAV ---- */
+nav{position:sticky;top:0;z-index:100;background:rgba(240,235,224,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--cream2);padding:0 2rem;height:64px;display:flex;align-items:center;justify-content:space-between}
+.nav-logo{font-family:'Lora',serif;font-size:1.35rem;color:var(--ink);font-weight:600;display:flex;align-items:center;gap:.5rem;cursor:pointer}
+.nav-logo span{background:var(--amber);color:var(--ink);padding:.1rem .45rem;border-radius:6px;font-size:.85rem;font-weight:700}
+.nav-links{display:flex;align-items:center;gap:2rem}
+.nav-links a{color:var(--muted);font-size:.9rem;font-weight:500;text-decoration:none;cursor:pointer;transition:color .2s}
+.nav-links a:hover{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1.25rem;border-radius:var(--radius-sm);border:none;font-family:'Nunito',sans-serif;font-weight:600;font-size:.9rem;cursor:pointer;transition:all .2s}
+.btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--cream2)}
+.btn-ghost:hover{background:var(--white);border-color:var(--ink3)}
+.btn-primary{background:var(--ink);color:var(--cream);border:1.5px solid var(--ink)}
+.btn-primary:hover{background:var(--ink2);transform:translateY(-1px)}
+.btn-amber{background:var(--amber);color:var(--ink);border:1.5px solid var(--amber)}
+.btn-amber:hover{background:var(--amber2);transform:translateY(-1px)}
+.btn-sm{padding:.4rem .9rem;font-size:.82rem}
+.btn-lg{padding:.8rem 2rem;font-size:1rem;border-radius:var(--radius)}
+
+/* ---- VIEWS ---- */
+.view{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---- LANDING ---- */
+.hero{min-height:calc(100vh - 64px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4rem 2rem 2rem;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%, rgba(245,166,35,.08) 0%, transparent 70%);pointer-events:none}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:.5rem;background:var(--white);border:1px solid var(--cream2);border-radius:99px;padding:.35rem .85rem;font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:1.75rem;box-shadow:0 2px 8px rgba(5,9,26,.06)}
+.hero-eyebrow::before{content:'';width:6px;height:6px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hero h1{font-family:'Lora',serif;font-size:clamp(2.4rem,5vw,4rem);line-height:1.15;color:var(--ink);max-width:780px;margin-bottom:1.25rem;font-weight:600}
+.hero h1 em{font-style:italic;color:var(--amber2)}
+.hero p{font-size:1.1rem;color:var(--muted);max-width:520px;line-height:1.7;margin-bottom:2.5rem}
+.upload-cta-box{background:var(--white);border:2px dashed var(--cream2);border-radius:var(--radius-lg);padding:2rem 3rem;cursor:pointer;transition:all .25s;max-width:480px;width:100%}
+.upload-cta-box:hover{border-color:var(--amber);background:var(--amber-soft);transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.upload-icon{width:56px;height:56px;background:var(--amber-soft);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;border:2px solid var(--amber)}
+.upload-cta-box h3{font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:.35rem}
+.upload-cta-box p{font-size:.85rem;color:var(--muted)}
+.upload-cta-box input[type=file]{display:none}
+.supported-formats{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:1rem}
+.format-tag{background:var(--cream);border:1px solid var(--cream2);border-radius:99px;padding:.15rem .65rem;font-size:.75rem;font-weight:600;color:var(--muted)}
+.hero-stats{display:flex;gap:2.5rem;margin-top:3rem;justify-content:center;flex-wrap:wrap}
+.stat{text-align:center}
+.stat-num{font-family:'Lora',serif;font-size:1.8rem;font-weight:600;color:var(--ink)}
+.stat-label{font-size:.8rem;color:var(--muted);margin-top:.15rem}
+
+/* Features */
+.section{padding:5rem 2rem;max-width:1100px;margin:0 auto}
+.section-label{font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--amber2);margin-bottom:.75rem}
+.section h2{font-family:'Lora',serif;font-size:clamp(1.8rem,3vw,2.6rem);color:var(--ink);line-height:1.25;margin-bottom:3rem}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem}
+.feature-card{background:var(--white);border:1px solid var(--cream2);border-radius:var(--radius);padding:1.75rem;transition:all .25s}
+.feature-card:hover{border-color:var(--amber);box-shadow:var(--shadow);transform:translateY(-2px)}
+.feature-icon{width:44px;height:44px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:1rem}
+.feature-card h3{font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:.5rem}
+.feature-card p{font-size:.875rem;color:var(--muted);line-height:1.6}
+
+/* Steps */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:flex;gap:1.75rem;align-items:flex-start;padding:2rem 0;border-bottom:1px solid var(--cream2)}
+.step:last-child{border-bottom:none}
+.step-num{flex-shrink:0;width:42px;height:42px;background:var(--ink);color:var(--cream);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Lora',serif;font-size:1rem;font-weight:600}
+.step h3{font-size:1.05rem;font-weight:700;color:var(--ink);margin-bottom:.35rem}
+.step p{font-size:.875rem;color:var(--muted);line-height:1.6}
+
+/* ---- MODAL ---- */
+.modal-overlay{position:fixed;inset:0;background:rgba(5,9,26,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px)}
+.modal{background:var(--white);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:420px;box-shadow:var(--shadow-lg);animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
+.modal h2{font-family:'Lora',serif;font-size:1.6rem;color:var(--ink);margin-bottom:.35rem}
+.modal p{color:var(--muted);font-size:.9rem;margin-bottom:1.75rem}
+.tab-group{display:flex;border:1px solid var(--cream2);border-radius:var(--radius-sm);margin-bottom:1.5rem;overflow:hidden}
+.tab{flex:1;padding:.55rem;text-align:center;font-size:.85rem;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s}
+.tab.active{background:var(--ink);color:var(--cream)}
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:.82rem;font-weight:600;color:var(--ink);margin-bottom:.4rem}
+.form-group input{width:100%;padding:.65rem .9rem;border:1.5px solid var(--cream2);border-radius:var(--radius-sm);font-family:'Nunito',sans-serif;font-size:.9rem;color:var(--text);background:var(--white);outline:none;transition:border-color .2s}
+.form-group input:focus{border-color:var(--amber)}
+.form-divider{text-align:center;font-size:.8rem;color:var(--muted2);margin:1.25rem 0;position:relative}
+.form-divider::before,.form-divider::after{content:'';position:absolute;top:50%;width:40%;height:1px;background:var(--cream2)}
+.form-divider::before{left:0}.form-divider::after{right:0}
+.oauth-btn{width:100%;padding:.6rem;border:1.5px solid var(--cream2);border-radius:var(--radius-sm);background:var(--white);display:flex;align-items:center;justify-content:center;gap:.6rem;font-family:'Nunito',sans-serif;font-size:.875rem;font-weight:600;cursor:pointer;color:var(--text);margin-bottom:.5rem;transition:all .2s}
+.oauth-btn:hover{background:var(--cream);border-color:var(--ink3)}
+
+/* ---- DASHBOARD ---- */
+.app-layout{display:flex;min-height:calc(100vh - 64px)}
+.sidebar{width:240px;flex-shrink:0;background:var(--ink);padding:1.5rem 1rem;display:flex;flex-direction:column;gap:.25rem}
+.sidebar-section{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(240,235,224,.35);padding:.5rem .75rem;margin-top:.75rem}
+.sidebar-item{display:flex;align-items:center;gap:.65rem;padding:.6rem .75rem;border-radius:var(--radius-sm);color:rgba(240,235,224,.7);font-size:.875rem;font-weight:500;cursor:pointer;transition:all .2s;text-decoration:none}
+.sidebar-item:hover,.sidebar-item.active{background:rgba(255,255,255,.1);color:var(--cream)}
+.sidebar-item .si-icon{font-size:1rem;width:20px;text-align:center}
+.sidebar-item.new-chat{background:var(--amber);color:var(--ink);font-weight:700;margin-bottom:.5rem}
+.sidebar-item.new-chat:hover{background:var(--amber2)}
+.main-content{flex:1;padding:2rem;overflow-y:auto;background:var(--cream)}
+
+/* Dashboard cards */
+.dash-header{margin-bottom:2rem}
+.dash-header h2{font-family:'Lora',serif;font-size:1.8rem;color:var(--ink)}
+.dash-header p{color:var(--muted);font-size:.9rem;margin-top:.3rem}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem}
+.stat-card{background:var(--white);border:1px solid var(--cream2);border-radius:var(--radius);padding:1.25rem 1.5rem}
+.stat-card .sc-label{font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem}
+.stat-card .sc-val{font-family:'Lora',serif;font-size:1.8rem;font-weight:600;color:var(--ink)}
+.stat-card .sc-sub{font-size:.78rem;color:var(--muted);margin-top:.2rem}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.dash-panel{background:var(--white);border:1px solid var(--cream2);border-radius:var(--radius);padding:1.5rem}
+.dash-panel h3{font-size:.9rem;font-weight:700;color:var(--ink);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.chat-item{display:flex;align-items:flex-start;gap:.75rem;padding:.75rem 0;border-bottom:1px solid var(--cream2);cursor:pointer;transition:background .15s}
+.chat-item:last-child{border-bottom:none}
+.chat-item:hover{background:var(--cream)}
+.ci-icon{width:36px;height:36px;background:var(--amber-soft);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0}
+.ci-title{font-size:.875rem;font-weight:600;color:var(--ink)}
+.ci-sub{font-size:.78rem;color:var(--muted);margin-top:.15rem}
+
+/* ---- CHAT VIEW ---- */
+.chat-layout{display:flex;flex:1;height:calc(100vh - 64px);overflow:hidden}
+.chat-sidebar{width:240px;flex-shrink:0;background:var(--ink);padding:1.5rem 1rem;display:flex;flex-direction:column;gap:.25rem;overflow-y:auto}
+.chat-main{flex:1;display:flex;flex-direction:column;background:var(--cream)}
+.chat-topbar{background:var(--white);border-bottom:1px solid var(--cream2);padding:.85rem 1.5rem;display:flex;align-items:center;gap:1rem}
+.chat-topbar h3{font-size:.95rem;font-weight:700;color:var(--ink);flex:1}
+.doc-badge{background:var(--amber-soft);border:1px solid var(--amber);border-radius:99px;padding:.2rem .65rem;font-size:.75rem;font-weight:600;color:var(--amber2)}
+.messages{flex:1;overflow-y:auto;padding:1.5rem;display:flex;flex-direction:column;gap:1rem}
+.msg{display:flex;gap:.75rem;align-items:flex-start}
+.msg-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700}
+.msg.user .msg-avatar{background:var(--ink);color:var(--cream);align-self:flex-end}
+.msg.ai .msg-avatar{background:var(--amber);color:var(--ink)}
+.msg.user{flex-direction:row-reverse}
+.msg-bubble{max-width:72%;padding:.9rem 1.1rem;border-radius:var(--radius);font-size:.9rem;line-height:1.6}
+.msg.user .msg-bubble{background:var(--ink);color:var(--cream);border-bottom-right-radius:4px}
+.msg.ai .msg-bubble{background:var(--white);border:1px solid var(--cream2);color:var(--text);border-bottom-left-radius:4px}
+.msg-citation{font-size:.75rem;color:var(--muted);margin-top:.4rem;display:flex;align-items:center;gap:.25rem}
+.msg-citation::before{content:'📄';font-size:.7rem}
+.msg-feedback{display:flex;gap:.35rem;margin-top:.5rem}
+.fb-btn{background:none;border:1px solid var(--cream2);border-radius:99px;padding:.15rem .5rem;font-size:.75rem;cursor:pointer;color:var(--muted);transition:all .15s}
+.fb-btn:hover{background:var(--cream);color:var(--ink)}
+.typing-indicator{display:flex;gap:4px;align-items:center;padding:.75rem 1rem}
+.typing-indicator span{width:6px;height:6px;background:var(--amber);border-radius:50%;animation:bounce 1.4s infinite}
+.typing-indicator span:nth-child(2){animation-delay:.2s}
+.typing-indicator span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.chat-input-area{background:var(--white);border-top:1px solid var(--cream2);padding:1rem 1.5rem}
+.chat-actions{display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
+.action-chip{background:var(--cream);border:1px solid var(--cream2);border-radius:99px;padding:.3rem .8rem;font-size:.78rem;font-weight:600;cursor:pointer;color:var(--muted);transition:all .15s;display:flex;align-items:center;gap:.3rem}
+.action-chip:hover{background:var(--amber-soft);border-color:var(--amber);color:var(--amber2)}
+.input-row{display:flex;gap:.75rem;align-items:flex-end}
+.chat-input{flex:1;border:1.5px solid var(--cream2);border-radius:var(--radius);padding:.7rem 1rem;font-family:'Nunito',sans-serif;font-size:.9rem;resize:none;outline:none;transition:border-color .2s;background:var(--cream);min-height:44px;max-height:120px}
+.chat-input:focus{border-color:var(--amber);background:var(--white)}
+.attach-btn{display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:var(--radius-sm);border:1.5px solid var(--cream2);background:var(--white);font-size:1.1rem;cursor:pointer;flex-shrink:0;transition:all .2s;line-height:1}
+.attach-btn:hover{background:var(--amber-soft);border-color:var(--amber)}
+.attach-btn input[type=file]{display:none}
+
+/* Upload zone in chat */
+.doc-upload-area{background:var(--cream);border:1.5px dashed var(--cream2);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;text-align:center;cursor:pointer;transition:all .2s}
+.doc-upload-area:hover{border-color:var(--amber);background:var(--amber-soft)}
+.doc-upload-area input{display:none}
+.doc-list{display:flex;flex-direction:column;gap:.4rem}
+.doc-entry{display:flex;align-items:center;gap:.6rem;background:var(--white);border:1px solid var(--cream2);border-radius:var(--radius-sm);padding:.5rem .75rem}
+.doc-entry .de-icon{font-size:.9rem;width:20px;text-align:center}
+.doc-entry .de-name{font-size:.8rem;font-weight:600;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-entry .de-status{font-size:.72rem;padding:.1rem .5rem;border-radius:99px;font-weight:600}
+.status-ready{background:#d1fae5;color:#065f46}
+.status-processing{background:#fef3c7;color:#92400e}
+.status-failed{background:#fee2e2;color:#991b1b}
+
+/* Quiz modal */
+.quiz-panel{background:var(--white);border:1px solid var(--cream2);border-radius:var(--radius-lg);padding:2rem;max-width:600px;margin:0 auto}
+.quiz-q{font-size:1rem;font-weight:600;color:var(--ink);margin-bottom:1rem;line-height:1.5}
+.quiz-opts{display:flex;flex-direction:column;gap:.5rem}
+.quiz-opt{display:flex;align-items:flex-start;gap:.75rem;padding:.75rem 1rem;border:1.5px solid var(--cream2);border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;font-size:.9rem}
+.quiz-opt:hover{border-color:var(--amber);background:var(--amber-soft)}
+.quiz-opt.selected{border-color:var(--info);background:#eff6ff}
+.quiz-opt.correct{border-color:var(--success);background:#d1fae5}
+.quiz-opt.wrong{border-color:var(--danger);background:#fee2e2}
+.opt-letter{width:26px;height:26px;border-radius:50%;background:var(--cream);border:1.5px solid var(--cream2);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;flex-shrink:0}
+.quiz-result{background:var(--white);border:1px solid var(--cream2);border-radius:var(--radius-lg);padding:2.5rem;text-align:center}
+.result-score{font-family:'Lora',serif;font-size:4rem;font-weight:600;color:var(--ink)}
+.result-percent{font-size:1.2rem;color:var(--amber2);font-weight:700}
+.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.5rem 0}
+.result-stat{background:var(--cream);border-radius:var(--radius-sm);padding:1rem;text-align:center}
+.result-stat .rs-val{font-size:1.6rem;font-weight:700;color:var(--ink)}
+.result-stat .rs-label{font-size:.75rem;color:var(--muted)}
+
+/* Progress bar */
+.progress-bar{height:4px;background:var(--cream2);border-radius:99px;overflow:hidden;margin:1rem 0}
+.progress-fill{height:100%;background:var(--amber);border-radius:99px;transition:width .3s}
+
+/* Toast */
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--ink);color:var(--cream);padding:.75rem 1.25rem;border-radius:var(--radius);font-size:.875rem;z-index:999;animation:toastIn .3s ease;box-shadow:var(--shadow-lg)}
+@keyframes toastIn{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
+
+/* Responsive */
+@media(max-width:768px){
+  .sidebar,.chat-sidebar{display:none}
+  .dash-grid{grid-template-columns:1fr}
+  .hero h1{font-size:2rem}
+  .chat-main{width:100%}
+  .msg-bubble{max-width:88%}
+}
+
+/* File status transition */
+.processing-bar{display:flex;gap:.5rem;align-items:center;margin-top:.25rem}
+.processing-bar .pb-track{flex:1;height:3px;background:var(--cream2);border-radius:99px;overflow:hidden}
+.processing-bar .pb-fill{height:100%;background:var(--amber);width:0%;transition:width .4s;border-radius:99px}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <div class="nav-logo" onclick="showView('landing')">
+    <span>S</span> ScholarAI
+  </div>
+  <div class="nav-links" id="nav-links-guest">
+    <a onclick="scrollToFeatures()">Features</a>
+    <a onclick="scrollToHow()">How it works</a>
+    <button class="btn btn-ghost btn-sm" onclick="openAuth('login')">Sign in</button>
+    <button class="btn btn-primary btn-sm" onclick="openAuth('signup')">Get started free</button>
+  </div>
+  <div class="nav-links hidden" id="nav-links-user">
+    <a onclick="showView('dashboard')">Dashboard</a>
+    <a onclick="showView('chat')">New chat</a>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Sign out</button>
+  </div>
+</nav>
+
+<!-- LANDING VIEW -->
+<div id="view-landing" class="view">
+  <div class="hero">
+    <div class="hero-eyebrow">✦ Free for all students &bull; No credit card</div>
+    <h1>Study smarter with<br><em>documents that talk back</em></h1>
+    <p>Upload your notes, textbooks, or slides. Ask anything. Get summaries, practice questions, and AI-powered quizzes — all grounded in your own material.</p>
+    <label class="upload-cta-box" id="hero-upload">
+      <input type="file" accept=".pdf,.docx,.pptx,.ppt,.png,.jpg,.jpeg" multiple id="hero-file-input">
+      <div class="upload-icon">📄</div>
+      <h3>Upload Your Document</h3>
+      <p>Drop files here or click to browse</p>
+      <div class="supported-formats">
+        <span class="format-tag">PDF</span>
+        <span class="format-tag">DOCX</span>
+        <span class="format-tag">PPTX</span>
+        <span class="format-tag">Images</span>
+      </div>
+    </label>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">10</div><div class="stat-label">Docs per prompt</div></div>
+      <div class="stat"><div class="stat-num">4</div><div class="stat-label">Question types</div></div>
+      <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Free in v1</div></div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="section" id="features-section">
+    <div class="section-label">What you can do</div>
+    <h2>Everything a student needs,<br>powered by your own notes</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fff8ec">💬</div>
+        <h3>Document-grounded chat</h3>
+        <p>Ask any question about your uploaded material. ScholarAI answers strictly from your documents, with page citations.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#ecfdf5">📝</div>
+        <h3>Smart summaries</h3>
+        <p>Request a concise summary across all your uploaded files — perfect for last-minute revision sessions.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#eff6ff">❓</div>
+        <h3>Important question sets</h3>
+        <p>Generate short-answer, long-answer, viva, or MCQ questions. Specify difficulty, count, and exam style.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fdf4ff">🎯</div>
+        <h3>Adaptive quizzes</h3>
+        <p>Take MCQ quizzes with instant feedback after submission. Track your score, percentages, and topic-wise performance.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fff1f2">📊</div>
+        <h3>Performance dashboard</h3>
+        <p>View your quiz history, past prompts, and performance analytics — all in one personal workspace.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#f0fdf4">🔖</div>
+        <h3>Chapter-aware AI</h3>
+        <p>Ask for MCQs from "Chapter 3 only" or "the section on photosynthesis." The AI understands your document structure.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="section" id="how-section" style="background:var(--white);max-width:100%;padding:5rem 2rem">
+    <div style="max-width:640px;margin:0 auto">
+      <div class="section-label">How it works</div>
+      <h2>From upload to exam-ready<br>in minutes</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>Upload your study material</h3>
+            <p>Add PDFs, Word docs, PowerPoint slides, or even scanned images. Our OCR engine handles non-text files automatically.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>Ask a question or request an action</h3>
+            <p>Type naturally — "Summarize this," "Give me 10 MCQs from Chapter 4," or "Explain the water cycle in simple English."</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>Study, quiz yourself, export</h3>
+            <p>Review AI answers with page citations, take interactive quizzes, and download results as PDF, DOCX, or TXT.</p>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:2rem">
+        <button class="btn btn-primary btn-lg" onclick="openAuth('signup')">Start studying for free →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer style="background:var(--ink);color:rgba(240,235,224,.6);text-align:center;padding:2rem;font-size:.85rem">
+    <div style="font-family:'Lora',serif;color:var(--amber);font-size:1.1rem;margin-bottom:.5rem">ScholarAI</div>
+    Free for all students · Version 1.0 · Built with ❤ for learners everywhere
+  </footer>
+</div>
+
+<!-- DASHBOARD VIEW -->
+<div id="view-dashboard" class="view hidden">
+  <div class="app-layout">
+    <div class="sidebar">
+      <div class="sidebar-item new-chat" onclick="showView('chat')">
+        <span class="si-icon">+</span> New chat
+      </div>
+      <div class="sidebar-item active" onclick="showView('dashboard')"><span class="si-icon">🏠</span> Dashboard</div>
+      <div class="sidebar-item" onclick="showView('chat')"><span class="si-icon">💬</span> All chats</div>
+      <div class="sidebar-section">Recent chats</div>
+      <div class="sidebar-item" onclick="openChat('Physics Exam Prep')"><span class="si-icon">⚛</span> Physics Exam Prep</div>
+      <div class="sidebar-item" onclick="openChat('History Notes')"><span class="si-icon">📜</span> History Notes</div>
+      <div class="sidebar-item" onclick="openChat('Organic Chemistry')"><span class="si-icon">🧪</span> Organic Chemistry</div>
+      <div class="sidebar-section">Account</div>
+      <div class="sidebar-item" onclick="logout()"><span class="si-icon">↩</span> Sign out</div>
+    </div>
+    <div class="main-content">
+      <div class="dash-header">
+        <h2>Good to see you, <span id="dash-username">Scholar</span> 👋</h2>
+        <p>Here's an overview of your study activity</p>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="sc-label">Documents</div><div class="sc-val" id="dash-docs">3</div><div class="sc-sub">uploaded</div></div>
+        <div class="stat-card"><div class="sc-label">Quizzes taken</div><div class="sc-val" id="dash-quizzes">7</div><div class="sc-sub">this week</div></div>
+        <div class="stat-card"><div class="sc-label">Avg. score</div><div class="sc-val">74%</div><div class="sc-sub">last 5 quizzes</div></div>
+        <div class="stat-card"><div class="sc-label">Study streak</div><div class="sc-val">4 🔥</div><div class="sc-sub">days</div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-panel">
+          <h3>📂 Recent chats</h3>
+          <div class="chat-item" onclick="openChat('Physics Exam Prep')">
+            <div class="ci-icon">⚛</div>
+            <div><div class="ci-title">Physics Exam Prep</div><div class="ci-sub">2 docs · 3 hours ago</div></div>
+          </div>
+          <div class="chat-item" onclick="openChat('History Notes')">
+            <div class="ci-icon">📜</div>
+            <div><div class="ci-title">History Notes</div><div class="ci-sub">1 doc · yesterday</div></div>
+          </div>
+          <div class="chat-item" onclick="openChat('Organic Chemistry')">
+            <div class="ci-icon">🧪</div>
+            <div><div class="ci-title">Organic Chemistry</div><div class="ci-sub">3 docs · 2 days ago</div></div>
+          </div>
+          <div style="margin-top:1rem">
+            <button class="btn btn-primary btn-sm" onclick="showView('chat')">+ New chat</button>
+          </div>
+        </div>
+        <div class="dash-panel">
+          <h3>🏆 Quiz performance</h3>
+          <div style="display:flex;flex-direction:column;gap:.75rem">
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.25rem"><span>Newton's Laws</span><span style="font-weight:700;color:var(--success)">90%</span></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:90%"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.25rem"><span>WWI Causes</span><span style="font-weight:700;color:var(--amber2)">75%</span></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:75%"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.25rem"><span>Organic Reactions</span><span style="font-weight:700;color:var(--danger)">60%</span></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:60%"></div></div>
+            </div>
+          </div>
+          <div style="margin-top:1.25rem;font-size:.82rem;color:var(--muted)">💡 Try reviewing Organic Reactions — your weakest topic this week</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT VIEW -->
+<div id="view-chat" class="view hidden">
+  <div class="chat-layout">
+    <div class="chat-sidebar">
+      <div class="sidebar-item new-chat" onclick="newChat()"><span class="si-icon">+</span> New chat</div>
+      <div class="sidebar-item" onclick="showView('dashboard')"><span class="si-icon">🏠</span> Dashboard</div>
+      <div class="sidebar-section">Chats</div>
+      <div class="sidebar-item active" id="current-chat-sidebar"><span class="si-icon">💬</span> <span id="current-chat-title-sidebar">New Chat</span></div>
+      <div class="sidebar-item" onclick="openChat('Physics Exam Prep')"><span class="si-icon">⚛</span> Physics Exam Prep</div>
+      <div class="sidebar-item" onclick="openChat('History Notes')"><span class="si-icon">📜</span> History Notes</div>
+    </div>
+    <div class="chat-main">
+      <div class="chat-topbar">
+        <h3 id="chat-title">New Chat</h3>
+        <div class="doc-badge" id="doc-count-badge">0 documents</div>
+        <button class="btn btn-ghost btn-sm" onclick="showQuizSetup()">🎯 Quiz me</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportChat()">↓ Export</button>
+      </div>
+      <div class="messages" id="messages-container">
+        <div class="msg ai">
+          <div class="msg-avatar">S</div>
+          <div>
+            <div class="msg-bubble">
+              <strong>Welcome to ScholarAI!</strong><br><br>
+              Upload your study documents below, then ask me anything:<br>
+              • "Summarize this document"<br>
+              • "Give me 5 MCQs from Chapter 2"<br>
+              • "Explain this topic in simple English"<br>
+              • "List the important questions for this exam"
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="doc-list" id="doc-list"></div>
+        <!-- Action chips -->
+        <div class="chat-actions">
+          <div class="action-chip" onclick="quickAction('summarize')">📝 Summarize</div>
+          <div class="action-chip" onclick="quickAction('questions')">❓ Important questions</div>
+          <div class="action-chip" onclick="showQuizSetup()">🎯 Generate quiz</div>
+          <div class="action-chip" onclick="quickAction('simple')">💡 Simplify</div>
+        </div>
+        <div class="input-row">
+          <label class="attach-btn" title="Attach documents" id="attach-label">
+            <input type="file" accept=".pdf,.docx,.pptx,.ppt,.png,.jpg,.jpeg" multiple id="chat-file-input">
+            📎
+          </label>
+          <textarea class="chat-input" id="chat-input" placeholder="Ask anything about your documents…" rows="1" onkeydown="handleEnter(event)" oninput="autoResize(this)"></textarea>
+          <button class="btn btn-amber" onclick="sendMessage()" id="send-btn">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay hidden" id="auth-overlay" onclick="closeAuthIfOutside(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2 id="auth-title">Welcome back</h2>
+    <p id="auth-sub">Sign in to continue studying</p>
+    <div class="tab-group">
+      <div class="tab active" id="tab-login" onclick="setAuthTab('login')">Sign in</div>
+      <div class="tab" id="tab-signup" onclick="setAuthTab('signup')">Sign up</div>
+    </div>
+    <div id="auth-form">
+      <div class="form-group" id="name-group" style="display:none">
+        <label>Full name</label>
+        <input type="text" id="auth-name" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label>Email address</label>
+        <input type="email" id="auth-email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="auth-password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:.7rem" onclick="doAuth()" id="auth-submit-btn">Sign in</button>
+    </div>
+    <div class="form-divider">or continue with</div>
+    <button class="oauth-btn" onclick="doOAuth('google')">
+      <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continue with Google
+    </button>
+    <button class="oauth-btn" onclick="doOAuth('phone')">
+      <span style="font-size:16px">📱</span> Continue with phone OTP
+    </button>
+  </div>
+</div>
+
+<!-- QUIZ SETUP MODAL -->
+<div class="modal-overlay hidden" id="quiz-setup-overlay" onclick="closeQuizSetup(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
+    <h2>Configure quiz</h2>
+    <p>Set your quiz parameters before generating</p>
+    <div class="form-group">
+      <label>Question type</label>
+      <select id="quiz-type" style="width:100%;padding:.65rem;border:1.5px solid var(--cream2);border-radius:var(--radius-sm);font-family:'Nunito',sans-serif;font-size:.9rem;background:var(--white)">
+        <option value="mcq">MCQ (Multiple choice)</option>
+        <option value="short">Short answer</option>
+        <option value="long">Long answer</option>
+        <option value="viva">Viva / oral</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Difficulty level</label>
+      <select id="quiz-diff" style="width:100%;padding:.65rem;border:1.5px solid var(--cream2);border-radius:var(--radius-sm);font-family:'Nunito',sans-serif;font-size:.9rem;background:var(--white)">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Number of questions</label>
+      <input type="number" id="quiz-count" value="5" min="1" max="20">
+    </div>
+    <div class="form-group">
+      <label>Topic / chapter (optional)</label>
+      <input type="text" id="quiz-topic" placeholder="e.g. Chapter 2, Photosynthesis…">
+    </div>
+    <div style="display:flex;gap:.75rem;margin-top:.5rem">
+      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="document.getElementById('quiz-setup-overlay').classList.add('hidden')">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="startQuiz()">Generate quiz</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUIZ ACTIVE MODAL -->
+<div class="modal-overlay hidden" id="quiz-active-overlay">
+  <div style="background:var(--white);border-radius:var(--radius-lg);padding:2rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-size:.85rem;font-weight:600;color:var(--muted)" id="quiz-progress-label">Question 1 of 5</div>
+      <button class="btn btn-ghost btn-sm" onclick="endQuiz()">✕ End quiz</button>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="quiz-progress-fill" style="width:20%"></div></div>
+    <div id="quiz-question-area" style="margin-top:1.25rem"></div>
+    <div style="display:flex;gap:.75rem;margin-top:1.5rem" id="quiz-nav-btns">
+      <button class="btn btn-ghost" style="flex:1;justify-content:center" id="quiz-next-btn" onclick="quizNext()" disabled>Next →</button>
+    </div>
+    <div id="quiz-result-area" class="hidden"></div>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+let currentUser = null;
+let authMode = 'login';
+let documents = [];
+let messages = [];
+let currentChatTitle = 'New Chat';
+let quizData = {questions:[], current:0, answers:[], submitted:false};
+
+// ===== NAVIGATION =====
+function showView(view) {
+  if (view !== 'landing' && !currentUser) { openAuth('signup'); return; }
+  ['landing','dashboard','chat'].forEach(v => {
+    document.getElementById('view-'+v).classList.toggle('hidden', v !== view);
+  });
+  document.getElementById('main-nav').style.display = view === 'chat' ? 'none' : 'flex';
+  if (view === 'chat') { document.getElementById('main-nav').style.display = 'flex'; }
+}
+
+function scrollToFeatures() { document.getElementById('features-section').scrollIntoView({behavior:'smooth'}); }
+function scrollToHow() { document.getElementById('how-section').scrollIntoView({behavior:'smooth'}); }
+
+// ===== AUTH =====
+function openAuth(mode) {
+  authMode = mode;
+  setAuthTab(mode);
+  document.getElementById('auth-overlay').classList.remove('hidden');
+}
+function setAuthTab(mode) {
+  authMode = mode;
+  document.getElementById('tab-login').classList.toggle('active', mode==='login');
+  document.getElementById('tab-signup').classList.toggle('active', mode==='signup');
+  document.getElementById('name-group').style.display = mode==='signup'?'block':'none';
+  document.getElementById('auth-title').textContent = mode==='login'?'Welcome back':'Create account';
+  document.getElementById('auth-sub').textContent = mode==='login'?'Sign in to continue studying':'Start your free study journey';
+  document.getElementById('auth-submit-btn').textContent = mode==='login'?'Sign in':'Create account';
+}
+function closeAuthIfOutside(e) {
+  if (e.target === document.getElementById('auth-overlay')) document.getElementById('auth-overlay').classList.add('hidden');
+}
+function doAuth() {
+  const name = document.getElementById('auth-name').value || 'Scholar';
+  const email = document.getElementById('auth-email').value;
+  if (!email) { showToast('Please enter your email'); return; }
+  loginUser(name || email.split('@')[0]);
+}
+function doOAuth(provider) {
+  const names = {google:'Google User', phone:'Student'};
+  loginUser(names[provider]);
+}
+function loginUser(name) {
+  currentUser = { name };
+  document.getElementById('dash-username').textContent = name;
+  document.getElementById('auth-overlay').classList.add('hidden');
+  document.getElementById('nav-links-guest').classList.add('hidden');
+  document.getElementById('nav-links-user').classList.remove('hidden');
+  // If files were pending, go to chat
+  if (documents.length > 0) { showView('chat'); }
+  else { showView('dashboard'); }
+}
+function logout() {
+  currentUser = null;
+  documents = [];
+  messages = [];
+  document.getElementById('nav-links-guest').classList.remove('hidden');
+  document.getElementById('nav-links-user').classList.add('hidden');
+  showView('landing');
+}
+
+// ===== FILE UPLOAD =====
+document.getElementById('hero-file-input').addEventListener('change', function(e) {
+  if (!currentUser) { openAuth('signup'); return; }
+  handleFiles(Array.from(e.target.files));
+  showView('chat');
+});
+document.getElementById('chat-file-input').addEventListener('change', function(e) {
+  handleFiles(Array.from(e.target.files));
+});
+
+function handleFiles(files) {
+  files.forEach(file => {
+    const doc = {name: file.name, status: 'uploading', id: Date.now()+Math.random()};
+    documents.push(doc);
+    renderDocs();
+    simulateProcessing(doc);
+  });
+}
+
+function simulateProcessing(doc) {
+  const stages = ['uploading','extracting','analyzing','ready'];
+  let i = 0;
+  const iv = setInterval(() => {
+    i++;
+    if (i < stages.length) {
+      doc.status = stages[i];
+      renderDocs();
+    } else {
+      clearInterval(iv);
+      doc.status = 'ready';
+      renderDocs();
+      updateDocBadge();
+      showToast(`✓ ${doc.name} is ready`);
+    }
+  }, 900);
+}
+
+function renderDocs() {
+  const list = document.getElementById('doc-list');
+  if (!list) return;
+  if (documents.length === 0) { list.innerHTML=''; return; }
+  const iconMap = {'.pdf':'📄','.docx':'📝','.pptx':'📊','.ppt':'📊','.jpg':'🖼','.jpeg':'🖼','.png':'🖼'};
+  const ext = f => '.'+f.split('.').pop().toLowerCase();
+  list.innerHTML = documents.map(d => `
+    <div class="doc-entry">
+      <span class="de-icon">${iconMap[ext(d.name)]||'📄'}</span>
+      <span class="de-name" title="${d.name}">${d.name}</span>
+      <span class="de-status ${d.status==='ready'?'status-ready':d.status==='failed'?'status-failed':'status-processing'}">
+        ${d.status==='ready'?'Ready':d.status==='failed'?'Failed':d.status.charAt(0).toUpperCase()+d.status.slice(1)+'…'}
+      </span>
+    </div>`).join('');
+  updateDocBadge();
+}
+
+function updateDocBadge() {
+  const ready = documents.filter(d=>d.status==='ready').length;
+  const badge = document.getElementById('doc-count-badge');
+  if (badge) badge.textContent = `${ready} document${ready!==1?'s':''}`;
+}
+
+// ===== CHAT =====
+function openChat(title) {
+  if (!currentUser) { openAuth('login'); return; }
+  currentChatTitle = title;
+  document.getElementById('chat-title').textContent = title;
+  document.getElementById('current-chat-title-sidebar').textContent = title;
+  showView('chat');
+}
+function newChat() {
+  currentChatTitle = 'New Chat';
+  document.getElementById('chat-title').textContent = 'New Chat';
+  document.getElementById('current-chat-title-sidebar').textContent = 'New Chat';
+  messages = [];
+  renderMessages();
+  document.getElementById('chat-input').value = '';
+}
+
+function handleEnter(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120)+'px';
+}
+function quickAction(type) {
+  const map = {
+    summarize: 'Please summarize all the uploaded documents for me.',
+    questions: 'Generate a list of 10 important questions (mix of short and long answer) from the uploaded material.',
+    simple: 'Explain the main concepts from the document in simple, easy-to-understand English.'
+  };
+  document.getElementById('chat-input').value = map[type]||'';
+  document.getElementById('chat-input').focus();
+}
+
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  addMessage('user', text);
+  input.value = '';
+  input.style.height = 'auto';
+  const ready = documents.filter(d=>d.status==='ready');
+  callAI(text, ready);
+}
+
+function addMessage(role, content, citation) {
+  const container = document.getElementById('messages-container');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const avatar = role === 'user' ? (currentUser?.name?.[0]?.toUpperCase()||'U') : 'S';
+  div.innerHTML = `
+    <div class="msg-avatar">${avatar}</div>
+    <div>
+      <div class="msg-bubble">${content}</div>
+      ${citation ? `<div class="msg-citation">Source: ${citation}</div>` : ''}
+      ${role === 'ai' ? `<div class="msg-feedback">
+        <button class="fb-btn" onclick="feedback('up',this)">👍</button>
+        <button class="fb-btn" onclick="feedback('down',this)">👎</button>
+        <button class="fb-btn" onclick="feedback('wrong',this)">⚠ Wrong</button>
+        <button class="fb-btn" onclick="feedback('useless',this)">Not useful</button>
+      </div>` : ''}
+    </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function feedback(type, btn) {
+  const labels = {up:'Thanks!', down:'Noted', wrong:'Reported', useless:'Feedback saved'};
+  btn.textContent = labels[type];
+  btn.disabled = true;
+  showToast('Feedback recorded — thank you!');
+}
+
+function showTyping() {
+  const container = document.getElementById('messages-container');
+  const div = document.createElement('div');
+  div.className = 'msg ai'; div.id = 'typing-msg';
+  div.innerHTML = `<div class="msg-avatar">S</div><div class="msg-bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+function hideTyping() {
+  const t = document.getElementById('typing-msg');
+  if (t) t.remove();
+}
+
+async function callAI(userMsg, readyDocs) {
+  showTyping();
+  const docContext = readyDocs.length > 0
+    ? `The student has uploaded the following documents: ${readyDocs.map(d=>d.name).join(', ')}. Answer strictly based on the uploaded document content. Always cite page numbers when possible.`
+    : `No documents have been uploaded yet. Politely remind the student to upload study material first.`;
+
+  const history = messages.slice(-8).map(m => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content
+  }));
+
+  messages.push({role:'user', content: userMsg});
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        system: `You are ScholarAI, an expert study assistant. ${docContext}
+You help students by answering questions about their uploaded study material, generating summaries, creating practice questions (short-answer, long-answer, viva, MCQ), and explaining concepts.
+Key rules:
+- Always answer from document content by default. Only use general knowledge if explicitly asked.
+- When generating questions, format them clearly numbered.
+- For summaries, be concise but comprehensive.
+- Always cite "Page X" or "Section Y" when possible (use reasonable made-up page numbers for demo purposes).
+- Be encouraging and student-friendly in tone.
+- Keep responses focused and well-structured.`,
+        messages: [...history, { role: "user", content: userMsg }]
+      })
+    });
+    const data = await response.json();
+    hideTyping();
+    const text = data.content?.map(b => b.text||'').join('') || 'Sorry, I could not generate a response. Please try again.';
+    const citation = readyDocs.length > 0 ? readyDocs.map(d=>d.name).join(', ') : null;
+    messages.push({role:'ai', content: text});
+    addMessage('ai', text.replace(/\n/g,'<br>'), citation);
+    // Auto-title the chat
+    if (messages.length === 2 && currentChatTitle === 'New Chat') {
+      currentChatTitle = userMsg.slice(0,30)+(userMsg.length>30?'…':'');
+      document.getElementById('chat-title').textContent = currentChatTitle;
+      document.getElementById('current-chat-title-sidebar').textContent = currentChatTitle;
+    }
+  } catch (err) {
+    hideTyping();
+    addMessage('ai', 'There was an issue connecting to the AI. Please check your connection and try again.');
+  }
+}
+
+function renderMessages() {
+  const container = document.getElementById('messages-container');
+  container.innerHTML = `<div class="msg ai"><div class="msg-avatar">S</div><div><div class="msg-bubble"><strong>Welcome to ScholarAI!</strong><br><br>Upload your study documents below, then ask me anything:<br>• "Summarize this document"<br>• "Give me 5 MCQs from Chapter 2"<br>• "Explain this topic in simple English"</div></div></div>`;
+}
+
+// ===== QUIZ =====
+function showQuizSetup() {
+  const ready = documents.filter(d=>d.status==='ready');
+  if (ready.length === 0) { showToast('Please upload and prepare documents first'); return; }
+  document.getElementById('quiz-setup-overlay').classList.remove('hidden');
+}
+function closeQuizSetup(e) {
+  if (e.target === document.getElementById('quiz-setup-overlay')) document.getElementById('quiz-setup-overlay').classList.add('hidden');
+}
+
+async function startQuiz() {
+  const type = document.getElementById('quiz-type').value;
+  const diff = document.getElementById('quiz-diff').value;
+  const count = parseInt(document.getElementById('quiz-count').value) || 5;
+  const topic = document.getElementById('quiz-topic').value;
+  document.getElementById('quiz-setup-overlay').classList.add('hidden');
+  showToast('Generating your quiz…');
+
+  const prompt = `Generate exactly ${count} ${type.toUpperCase()} questions${topic ? ' about "'+topic+'"' : ''} at ${diff} difficulty level.
+For each MCQ, provide: the question, 4 options labeled A-D, and the correct answer letter.
+Format as valid JSON array like:
+[{"q":"Question text","options":["A. ..","B. ..","C. ..","D. .."],"answer":"A","explanation":"Short explanation"}]
+Respond ONLY with the JSON array, no other text.`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1500,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await response.json();
+    let text = data.content?.map(b=>b.text||'').join('') || '[]';
+    text = text.replace(/```json|```/g,'').trim();
+    const qs = JSON.parse(text);
+    launchQuiz(qs, type);
+  } catch(e) {
+    // Fallback sample questions
+    launchQuiz([
+      {q:"What is the primary concept discussed in this document?", options:["A. Introduction","B. Core theory","C. Conclusion","D. Examples"], answer:"B", explanation:"The document primarily focuses on core theory."},
+      {q:"Which of the following best describes the main topic?", options:["A. History","B. Science","C. Mathematics","D. The subject of your document"], answer:"D", explanation:"Based on the uploaded content."},
+    ], type);
+  }
+}
+
+function launchQuiz(questions, type) {
+  quizData = {questions, current:0, answers:[], submitted:false, type};
+  document.getElementById('quiz-active-overlay').classList.remove('hidden');
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion() {
+  const {questions, current} = quizData;
+  const q = questions[current];
+  if (!q) return;
+  document.getElementById('quiz-progress-label').textContent = `Question ${current+1} of ${questions.length}`;
+  document.getElementById('quiz-progress-fill').style.width = `${((current)/questions.length)*100}%`;
+  document.getElementById('quiz-result-area').classList.add('hidden');
+  document.getElementById('quiz-question-area').classList.remove('hidden');
+  document.getElementById('quiz-nav-btns').classList.remove('hidden');
+  document.getElementById('quiz-next-btn').disabled = true;
+  document.getElementById('quiz-question-area').innerHTML = `
+    <div class="quiz-q">${current+1}. ${q.q}</div>
+    <div class="quiz-opts">
+      ${(q.options||[]).map((opt,i)=>`
+        <div class="quiz-opt" onclick="selectOpt(${i})" id="opt-${i}">
+          <div class="opt-letter">${String.fromCharCode(65+i)}</div>
+          <div>${opt.replace(/^[A-D]\.\s*/,'')}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function selectOpt(idx) {
+  quizData.answers[quizData.current] = idx;
+  document.querySelectorAll('.quiz-opt').forEach((el,i)=>{
+    el.classList.toggle('selected', i===idx);
+  });
+  document.getElementById('quiz-next-btn').disabled = false;
+  const isLast = quizData.current === quizData.questions.length - 1;
+  document.getElementById('quiz-next-btn').textContent = isLast ? 'Submit quiz →' : 'Next →';
+}
+
+function quizNext() {
+  const {questions, current, answers} = quizData;
+  const isLast = current === questions.length - 1;
+  if (isLast) { showQuizResults(); return; }
+  quizData.current++;
+  renderQuizQuestion();
+}
+
+function showQuizResults() {
+  const {questions, answers} = quizData;
+  let correct = 0;
+  questions.forEach((q,i)=>{
+    const selectedOpt = answers[i];
+    const correctLetter = q.answer;
+    const correctIdx = correctLetter ? correctLetter.charCodeAt(0)-65 : -1;
+    if (selectedOpt === correctIdx) correct++;
+  });
+  const pct = Math.round((correct/questions.length)*100);
+  document.getElementById('quiz-progress-fill').style.width = '100%';
+  document.getElementById('quiz-question-area').classList.add('hidden');
+  document.getElementById('quiz-nav-btns').classList.add('hidden');
+  document.getElementById('quiz-result-area').classList.remove('hidden');
+  document.getElementById('quiz-result-area').innerHTML = `
+    <div class="quiz-result">
+      <div class="result-score">${pct}%</div>
+      <div style="font-size:1rem;color:var(--muted);margin:.25rem 0 1.25rem">${pct>=80?'Excellent work! 🎉':pct>=60?'Good effort! 💪':'Keep practicing! 📚'}</div>
+      <div class="result-grid">
+        <div class="result-stat"><div class="rs-val" style="color:var(--success)">${correct}</div><div class="rs-label">Correct</div></div>
+        <div class="result-stat"><div class="rs-val" style="color:var(--danger)">${questions.length-correct}</div><div class="rs-label">Wrong</div></div>
+        <div class="result-stat"><div class="rs-val">${questions.length}</div><div class="rs-label">Total</div></div>
+      </div>
+      <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1rem">
+        <button class="btn btn-primary" onclick="showQuizSetup()">Try another quiz</button>
+        <button class="btn btn-ghost" onclick="endQuiz()">Close</button>
+      </div>
+    </div>`;
+  document.getElementById('quiz-progress-label').textContent = 'Quiz complete!';
+  // Update dashboard stats
+  document.getElementById('dash-quizzes').textContent = parseInt(document.getElementById('dash-quizzes').textContent)+1;
+}
+
+function endQuiz() {
+  document.getElementById('quiz-active-overlay').classList.add('hidden');
+}
+
+// ===== EXPORT =====
+function exportChat() {
+  const content = messages.map(m=>`[${m.role.toUpperCase()}] ${m.content}`).join('\n\n');
+  const blob = new Blob([content], {type:'text/plain'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `${currentChatTitle.replace(/\s+/g,'-')}-export.txt`; a.click();
+  showToast('Chat exported as TXT');
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3000);
+}
+
+// ===== INIT =====
+showView('landing');
+</script>
+</body>
+</html>
