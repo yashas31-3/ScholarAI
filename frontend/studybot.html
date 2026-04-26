@@ -561,6 +561,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(240,235,224,.92);backdrop-
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 // ===== STATE =====
 let currentUser = null;
@@ -642,9 +643,21 @@ document.getElementById('chat-file-input').addEventListener('change', function(e
 
 function handleFiles(files) {
   files.forEach(file => {
-    const doc = {name: file.name, status: 'uploading', id: Date.now()+Math.random()};
+    const doc = {
+      name: file.name,
+      status: 'uploading',
+      id: Date.now()+Math.random(),
+      content: ""
+    };
+
     documents.push(doc);
     renderDocs();
+
+    // 🔥 If PDF → extract text
+    if (file.type === "application/pdf") {
+      extractPDFText(file, doc);
+    }
+
     simulateProcessing(doc);
   });
 }
@@ -731,12 +744,7 @@ function sendMessage() {
   addMessage('user', text);
   input.value = '';
   input.style.height = 'auto';
-  const ready = documents.filter(d=>d.status==='ready');
-<<<<<<< HEAD
   callAI(text);
-=======
-  callAI(text, ready);
->>>>>>> 96337b45b14b687c7774f46a75eb9660678ec045
 }
 
 function addMessage(role, content, citation) {
@@ -780,7 +788,6 @@ function hideTyping() {
   if (t) t.remove();
 }
 
-<<<<<<< HEAD
 function formatText(text) {
   return text
     .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')  // bold
@@ -788,8 +795,39 @@ function formatText(text) {
     .replace(/\d+\.\s/g, '<br><br>$&');      // spacing for lists
 }
 
+async function extractPDFText(file, doc) {
+  const reader = new FileReader();
+
+  reader.onload = async function () {
+    const typedArray = new Uint8Array(this.result);
+
+    const pdf = await pdfjsLib.getDocument(typedArray).promise;
+    let fullText = "";
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const strings = content.items.map(item => item.str).join(" ");
+      fullText += `Page ${i}: ${strings}\n\n`;
+    }
+
+    doc.content = fullText;   // 🔥 store text
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
 async function callAI(userMsg) {
   showTyping();
+
+  const readyDocs = documents.filter(d => d.status === 'ready');
+  const combinedText = readyDocs.map(d => d.content).join("\n\n");
+
+  const docContext = readyDocs.length > 0
+    ? `Use ONLY the following document content to answer:\n\n${combinedText}`
+    : `No documents uploaded. Ask user to upload.`;
+
+  const prompt = `${docContext}\n\n${userMsg}`;
 
   try {
     const response = await fetch("http://localhost:5000/api/chat", {
@@ -797,68 +835,21 @@ async function callAI(userMsg) {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ message: userMsg })
+      body: JSON.stringify({ message: prompt })
     });
 
     const data = await response.json();
+    console.log("FULL API RESPONSE:", data);
+    const text = data.reply || "Error";
 
     hideTyping();
 
-    addMessage("ai", formatText(data.reply));
+    addMessage("ai", formatText(text));
 
   } catch (err) {
     console.error(err);
     hideTyping();
-    addMessage("ai", "Backend not working ");
-=======
-async function callAI(userMsg, readyDocs) {
-  showTyping();
-  const docContext = readyDocs.length > 0
-    ? `The student has uploaded the following documents: ${readyDocs.map(d=>d.name).join(', ')}. Answer strictly based on the uploaded document content. Always cite page numbers when possible.`
-    : `No documents have been uploaded yet. Politely remind the student to upload study material first.`;
-
-  const history = messages.slice(-8).map(m => ({
-    role: m.role === 'user' ? 'user' : 'assistant',
-    content: m.content
-  }));
-
-  messages.push({role:'user', content: userMsg});
-
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        system: `You are ScholarAI, an expert study assistant. ${docContext}
-You help students by answering questions about their uploaded study material, generating summaries, creating practice questions (short-answer, long-answer, viva, MCQ), and explaining concepts.
-Key rules:
-- Always answer from document content by default. Only use general knowledge if explicitly asked.
-- When generating questions, format them clearly numbered.
-- For summaries, be concise but comprehensive.
-- Always cite "Page X" or "Section Y" when possible (use reasonable made-up page numbers for demo purposes).
-- Be encouraging and student-friendly in tone.
-- Keep responses focused and well-structured.`,
-        messages: [...history, { role: "user", content: userMsg }]
-      })
-    });
-    const data = await response.json();
-    hideTyping();
-    const text = data.content?.map(b => b.text||'').join('') || 'Sorry, I could not generate a response. Please try again.';
-    const citation = readyDocs.length > 0 ? readyDocs.map(d=>d.name).join(', ') : null;
-    messages.push({role:'ai', content: text});
-    addMessage('ai', text.replace(/\n/g,'<br>'), citation);
-    // Auto-title the chat
-    if (messages.length === 2 && currentChatTitle === 'New Chat') {
-      currentChatTitle = userMsg.slice(0,30)+(userMsg.length>30?'…':'');
-      document.getElementById('chat-title').textContent = currentChatTitle;
-      document.getElementById('current-chat-title-sidebar').textContent = currentChatTitle;
-    }
-  } catch (err) {
-    hideTyping();
-    addMessage('ai', 'There was an issue connecting to the AI. Please check your connection and try again.');
->>>>>>> 96337b45b14b687c7774f46a75eb9660678ec045
+    addMessage("ai", "Backend not working 😭");
   }
 }
 
@@ -894,7 +885,10 @@ Respond ONLY with the JSON array, no other text.`;
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer YOUR_ANTHROPIC_API_KEY"
+      },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1500,
