@@ -869,6 +869,12 @@ function closeQuizSetup(e) {
 }
 
 async function startQuiz() {
+  const readyDocs = documents.filter(d => d.status === 'ready');
+  if (readyDocs.length === 0) {
+    showToast('Please upload and prepare documents first');
+    return;
+  }
+
   const type = document.getElementById('quiz-type').value;
   const diff = document.getElementById('quiz-diff').value;
   const count = parseInt(document.getElementById('quiz-count').value) || 5;
@@ -876,35 +882,32 @@ async function startQuiz() {
   document.getElementById('quiz-setup-overlay').classList.add('hidden');
   showToast('Generating your quiz…');
 
-  const prompt = `Generate exactly ${count} ${type.toUpperCase()} questions${topic ? ' about "'+topic+'"' : ''} at ${diff} difficulty level.
-For each MCQ, provide: the question, 4 options labeled A-D, and the correct answer letter.
-Format as valid JSON array like:
-[{"q":"Question text","options":["A. ..","B. ..","C. ..","D. .."],"answer":"A","explanation":"Short explanation"}]
-Respond ONLY with the JSON array, no other text.`;
+  const combinedText = readyDocs.map(d => d.content).join("\n\n");
+  const docContext = `Use ONLY the following uploaded document content to generate the quiz questions. Do not invent facts or use information outside these documents.`;
+
+  const prompt = `${docContext}\n\n${combinedText}\n\nGenerate exactly ${count} ${type.toUpperCase()} questions${topic ? ' about "' + topic + '"' : ''} at ${diff} difficulty level. For each MCQ, provide the question, 4 options labeled A-D, and the correct answer letter. Format the response as a valid JSON array only, for example:\n[{"q":"Question text","options":["A. ..","B. ..","C. ..","D. .."],"answer":"A","explanation":"Short explanation"}]`;
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch("http://localhost:5000/api/chat", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer YOUR_ANTHROPIC_API_KEY"
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1500,
-        messages: [{ role: "user", content: prompt }]
-      })
+      body: JSON.stringify({ message: prompt })
     });
+
     const data = await response.json();
-    let text = data.content?.map(b=>b.text||'').join('') || '[]';
-    text = text.replace(/```json|```/g,'').trim();
+    const raw = data.reply || '[]';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const match = clean.match(/(\[.*\])/s);
+    const text = match ? match[1] : clean;
     const qs = JSON.parse(text);
     launchQuiz(qs, type);
-  } catch(e) {
-    // Fallback sample questions
+  } catch (e) {
+    console.error('Quiz generation failed:', e);
     launchQuiz([
-      {q:"What is the primary concept discussed in this document?", options:["A. Introduction","B. Core theory","C. Conclusion","D. Examples"], answer:"B", explanation:"The document primarily focuses on core theory."},
-      {q:"Which of the following best describes the main topic?", options:["A. History","B. Science","C. Mathematics","D. The subject of your document"], answer:"D", explanation:"Based on the uploaded content."},
+      {q: "What is the primary concept discussed in this document?", options: ["A. Introduction", "B. Core theory", "C. Conclusion", "D. Examples"], answer: "B", explanation: "The document primarily focuses on core theory."},
+      {q: "Which of the following best describes the main topic?", options: ["A. History", "B. Science", "C. Mathematics", "D. The subject of your document"], answer: "D", explanation: "Based on the uploaded content."},
     ], type);
   }
 }
