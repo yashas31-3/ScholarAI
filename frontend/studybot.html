@@ -897,22 +897,115 @@ async function startQuiz() {
     });
 
     const data = await response.json();
-    const raw = data.reply || '[]';
-    const clean = raw.replace(/```json|```/g, '').trim();
-    const match = clean.match(/(\[.*\])/s);
-    const text = match ? match[1] : clean;
-    const qs = JSON.parse(text);
+    const raw = (data.reply || '').replace(/```json|```/g, '').trim();
+    const parsed = extractJSONFromString(raw);
+    let qs = normalizeQuizQuestions(parsed || []);
+    if (!qs.length) {
+      qs = normalizeQuizQuestions(parseQuizFromText(raw));
+    }
+    if (!qs.length) {
+      throw new Error('Generated quiz contained no valid questions');
+    }
     launchQuiz(qs, type);
   } catch (e) {
     console.error('Quiz generation failed:', e);
-    launchQuiz([
+    const fallbackQuestions = [
       {q: "What is the primary concept discussed in this document?", options: ["A. Introduction", "B. Core theory", "C. Conclusion", "D. Examples"], answer: "B", explanation: "The document primarily focuses on core theory."},
       {q: "Which of the following best describes the main topic?", options: ["A. History", "B. Science", "C. Mathematics", "D. The subject of your document"], answer: "D", explanation: "Based on the uploaded content."},
-    ], type);
+    ];
+    showToast('Quiz generation failed, showing a sample quiz.');
+    launchQuiz(fallbackQuestions, type);
   }
 }
 
+function extractJSONFromString(text) {
+  if (!text) return null;
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    // Try to recover the first valid JSON array inside the text.
+    const bracketPositions = [];
+    for (let i = 0; i < cleaned.length; i += 1) {
+      if (cleaned[i] === '[') bracketPositions.push(i);
+    }
+    for (const start of bracketPositions) {
+      for (let end = cleaned.length - 1; end > start; end -= 1) {
+        if (cleaned[end] !== ']') continue;
+        const candidate = cleaned.slice(start, end + 1);
+        try {
+          return JSON.parse(candidate);
+        } catch (_) {}
+      }
+    }
+    return null;
+  }
+}
+
+function parseQuizFromText(text) {
+  if (!text) return [];
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const quiz = [];
+  let current = null;
+  lines.forEach(line => {
+    const questionMatch = /^(?:\d+\.|\d+\)|Question\s+\d+[:\.]|Q\d+\.)\s*(.*)/i.exec(line);
+    const optionMatch = /^([A-D])[\.\)]\s*(.*)/i.exec(line);
+    const answerMatch = /^(?:Answer|Correct answer|Key)[:\s]+([A-D])/i.exec(line);
+    const explanationMatch = /^(?:Explanation|Explain|Reason)[:\s]*(.*)/i.exec(line);
+
+    if (questionMatch) {
+      if (current && current.q) quiz.push(current);
+      current = { q: questionMatch[1].trim(), options: [], answer: '', explanation: '' };
+      return;
+    }
+    if (optionMatch && current) {
+      current.options.push(`${optionMatch[1].toUpperCase()}. ${optionMatch[2].trim()}`);
+      return;
+    }
+    if (answerMatch && current) {
+      current.answer = answerMatch[1].toUpperCase();
+      return;
+    }
+    if (explanationMatch && current) {
+      current.explanation = explanationMatch[1].trim();
+      return;
+    }
+    if (current && current.explanation !== undefined && !/^[A-D][\.\)]\s*/.test(line) && !/^Answer/i.test(line)) {
+      current.explanation = current.explanation ? `${current.explanation} ${line}` : line;
+    }
+  });
+  if (current && current.q) quiz.push(current);
+  return quiz;
+}
+
+function normalizeQuizQuestions(questions) {
+  if (!Array.isArray(questions) && questions && Array.isArray(questions.questions)) {
+    questions = questions.questions;
+  }
+  if (!Array.isArray(questions)) return [];
+  return questions.map(q => {
+    let rawOptions = [];
+    if (Array.isArray(q.options)) rawOptions = q.options;
+    else if (typeof q.options === 'string') rawOptions = q.options.split(/\r?\n/).map(opt => opt.trim()).filter(Boolean);
+    const normalizedOptions = rawOptions.map(opt => String(opt || '').trim()).filter(Boolean);
+    let answer = String(q.answer || q.correct || '').trim().toUpperCase();
+    if (/^[A-D]$/.test(answer) === false && /^[A-D][\.\)]/.test(answer)) {
+      answer = answer.charAt(0);
+    }
+    return {
+      q: String(q.q || q.question || q.prompt || '').trim(),
+      options: normalizedOptions,
+      answer,
+      explanation: String(q.explanation || q.explain || '').trim()
+    };
+  }).filter(q => q.q && q.options.length >= 2);
+}
+
 function launchQuiz(questions, type) {
+  if (!Array.isArray(questions) || questions.length === 0) {
+    showToast('No quiz questions available. Please try again.');
+    return;
+  }
   quizData = {questions, current:0, answers:[], submitted:false, type};
   document.getElementById('quiz-active-overlay').classList.remove('hidden');
   renderQuizQuestion();
