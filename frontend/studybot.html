@@ -371,7 +371,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(240,235,224,.92);backdrop-
       <div class="stats-row">
         <div class="stat-card"><div class="sc-label">Documents</div><div class="sc-val" id="dash-docs">3</div><div class="sc-sub">uploaded</div></div>
         <div class="stat-card"><div class="sc-label">Quizzes taken</div><div class="sc-val" id="dash-quizzes">7</div><div class="sc-sub">this week</div></div>
-        <div class="stat-card"><div class="sc-label">Avg. score</div><div class="sc-val">74%</div><div class="sc-sub">last 5 quizzes</div></div>
+        <div class="stat-card"><div class="sc-label">Avg. score</div><div class="sc-val" id="dash-avg-score">0%</div><div class="sc-sub">last 5 quizzes</div></div>
         <div class="stat-card"><div class="sc-label">Study streak</div><div class="sc-val">4 🔥</div><div class="sc-sub">days</div></div>
       </div>
       <div class="dash-grid">
@@ -384,21 +384,8 @@ nav{position:sticky;top:0;z-index:100;background:rgba(240,235,224,.92);backdrop-
         </div>
         <div class="dash-panel">
           <h3>🏆 Quiz performance</h3>
-          <div style="display:flex;flex-direction:column;gap:.75rem">
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.25rem"><span>Newton's Laws</span><span style="font-weight:700;color:var(--success)">90%</span></div>
-              <div class="progress-bar"><div class="progress-fill" style="width:90%"></div></div>
-            </div>
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.25rem"><span>WWI Causes</span><span style="font-weight:700;color:var(--amber2)">75%</span></div>
-              <div class="progress-bar"><div class="progress-fill" style="width:75%"></div></div>
-            </div>
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.25rem"><span>Organic Reactions</span><span style="font-weight:700;color:var(--danger)">60%</span></div>
-              <div class="progress-bar"><div class="progress-fill" style="width:60%"></div></div>
-            </div>
-          </div>
-          <div style="margin-top:1.25rem;font-size:.82rem;color:var(--muted)">💡 Try reviewing Organic Reactions — your weakest topic this week</div>
+          <div id="quiz-performance-panel" style="display:flex;flex-direction:column;gap:.75rem"></div>
+          <div id="quiz-performance-recommendation" style="margin-top:1.25rem;font-size:.82rem;color:var(--muted)"></div>
         </div>
       </div>
     </div>
@@ -558,6 +545,7 @@ let chats = {};
 let currentChatTitle = 'Chat 1';
 let chatCounter = 1;
 let messages = [];
+let quizHistory = [];
 let quizData = {questions:[], current:0, answers:[], submitted:false};
 
 // ===== NAVIGATION =====
@@ -577,6 +565,7 @@ function showView(view) {
   }
   if (view === 'dashboard') {
     updateRecentChats();
+    updateQuizDashboard();
   }
 }
 
@@ -629,9 +618,11 @@ function logout() {
   chats = {};
   currentChatTitle = 'Chat 1';
   chatCounter = 1;
+  quizHistory = [];
   document.getElementById('nav-links-guest').classList.remove('hidden');
   document.getElementById('nav-links-user').classList.add('hidden');
   updateRecentChats();
+  updateQuizDashboard();
   showView('landing');
 }
 
@@ -1160,6 +1151,12 @@ function showQuizResults() {
     if (selectedOpt === correctIdx) correct++;
   });
   const pct = Math.round((correct/questions.length)*100);
+  quizHistory.unshift({
+    topic: document.getElementById('quiz-topic').value.trim() || currentChatTitle,
+    score: correct,
+    total: questions.length,
+    percentage: pct
+  });
   document.getElementById('quiz-progress-fill').style.width = '100%';
   document.getElementById('quiz-question-area').classList.add('hidden');
   document.getElementById('quiz-nav-btns').classList.add('hidden');
@@ -1179,8 +1176,50 @@ function showQuizResults() {
       </div>
     </div>`;
   document.getElementById('quiz-progress-label').textContent = 'Quiz complete!';
-  // Update dashboard stats
-  document.getElementById('dash-quizzes').textContent = parseInt(document.getElementById('dash-quizzes').textContent)+1;
+  updateQuizDashboard();
+}
+
+function updateQuizDashboard() {
+  const panel = document.getElementById('quiz-performance-panel');
+  const recommendation = document.getElementById('quiz-performance-recommendation');
+  const quizCount = document.getElementById('dash-quizzes');
+  const avgScoreEl = document.getElementById('dash-avg-score');
+
+  if (quizCount) quizCount.textContent = quizHistory.length;
+  if (avgScoreEl) {
+    const avg = quizHistory.length
+      ? Math.round(quizHistory.reduce((sum, quiz) => sum + quiz.percentage, 0) / quizHistory.length)
+      : 0;
+    avgScoreEl.textContent = `${avg}%`;
+  }
+
+  if (!panel || !recommendation) return;
+
+  if (quizHistory.length === 0) {
+    panel.innerHTML = '<div style="color:var(--muted);font-size:.92rem;">No quiz data available yet</div>';
+    recommendation.textContent = '';
+    return;
+  }
+
+  panel.innerHTML = quizHistory.map(quiz => {
+    const color = quiz.percentage >= 80 ? 'var(--success)' : quiz.percentage >= 60 ? 'var(--amber2)' : 'var(--danger)';
+    return `
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.25rem">
+          <span>${quiz.topic}</span>
+          <span style="font-weight:700;color:${color}">${quiz.percentage}%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${quiz.percentage}%;background:${color}"></div></div>
+      </div>`;
+  }).join('');
+
+  const weakest = quizHistory.reduce((lowest, quiz) => {
+    if (!lowest || quiz.percentage < lowest.percentage) return quiz;
+    return lowest;
+  }, null);
+  recommendation.textContent = weakest
+    ? `💡 Try reviewing ${weakest.topic} — your weakest topic this session`
+    : '';
 }
 
 function endQuiz() {
