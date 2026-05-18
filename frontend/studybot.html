@@ -240,7 +240,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(240,235,224,.92);backdrop-
   </div>
   <div class="nav-links hidden" id="nav-links-user">
     <a onclick="showView('dashboard')">Dashboard</a>
-    <a onclick="showView('chat')">New chat</a>
+    <a onclick="newChat()">New chat</a>
     <button class="btn btn-ghost btn-sm" onclick="logout()">Sign out</button>
   </div>
 </nav>
@@ -353,15 +353,13 @@ nav{position:sticky;top:0;z-index:100;background:rgba(240,235,224,.92);backdrop-
 <div id="view-dashboard" class="view hidden">
   <div class="app-layout">
     <div class="sidebar">
-      <div class="sidebar-item new-chat" onclick="showView('chat')">
+      <div class="sidebar-item new-chat" onclick="newChat()">
         <span class="si-icon">+</span> New chat
       </div>
       <div class="sidebar-item active" onclick="showView('dashboard')"><span class="si-icon">🏠</span> Dashboard</div>
       <div class="sidebar-item" onclick="showView('chat')"><span class="si-icon">💬</span> All chats</div>
       <div class="sidebar-section">Recent chats</div>
-      <div class="sidebar-item" onclick="openChat('Physics Exam Prep')"><span class="si-icon">⚛</span> Physics Exam Prep</div>
-      <div class="sidebar-item" onclick="openChat('History Notes')"><span class="si-icon">📜</span> History Notes</div>
-      <div class="sidebar-item" onclick="openChat('Organic Chemistry')"><span class="si-icon">🧪</span> Organic Chemistry</div>
+      <div id="dashboard-sidebar-chat-list"></div>
       <div class="sidebar-section">Account</div>
       <div class="sidebar-item" onclick="logout()"><span class="si-icon">↩</span> Sign out</div>
     </div>
@@ -379,20 +377,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(240,235,224,.92);backdrop-
       <div class="dash-grid">
         <div class="dash-panel">
           <h3>📂 Recent chats</h3>
-          <div class="chat-item" onclick="openChat('Physics Exam Prep')">
-            <div class="ci-icon">⚛</div>
-            <div><div class="ci-title">Physics Exam Prep</div><div class="ci-sub">2 docs · 3 hours ago</div></div>
-          </div>
-          <div class="chat-item" onclick="openChat('History Notes')">
-            <div class="ci-icon">📜</div>
-            <div><div class="ci-title">History Notes</div><div class="ci-sub">1 doc · yesterday</div></div>
-          </div>
-          <div class="chat-item" onclick="openChat('Organic Chemistry')">
-            <div class="ci-icon">🧪</div>
-            <div><div class="ci-title">Organic Chemistry</div><div class="ci-sub">3 docs · 2 days ago</div></div>
-          </div>
+          <div id="dashboard-chat-list"></div>
           <div style="margin-top:1rem">
-            <button class="btn btn-primary btn-sm" onclick="showView('chat')">+ New chat</button>
+            <button class="btn btn-primary btn-sm" onclick="newChat()">+ New chat</button>
           </div>
         </div>
         <div class="dash-panel">
@@ -425,9 +412,8 @@ nav{position:sticky;top:0;z-index:100;background:rgba(240,235,224,.92);backdrop-
       <div class="sidebar-item new-chat" onclick="newChat()"><span class="si-icon">+</span> New chat</div>
       <div class="sidebar-item" onclick="showView('dashboard')"><span class="si-icon">🏠</span> Dashboard</div>
       <div class="sidebar-section">Chats</div>
-      <div class="sidebar-item active" id="current-chat-sidebar"><span class="si-icon">💬</span> <span id="current-chat-title-sidebar">New Chat</span></div>
-      <div class="sidebar-item" onclick="openChat('Physics Exam Prep')"><span class="si-icon">⚛</span> Physics Exam Prep</div>
-      <div class="sidebar-item" onclick="openChat('History Notes')"><span class="si-icon">📜</span> History Notes</div>
+      <div class="sidebar-item active" id="current-chat-sidebar"><span class="si-icon">💬</span> <span id="current-chat-title-sidebar">Chat 1</span></div>
+      <div id="sidebar-chat-list"></div>
     </div>
     <div class="chat-main">
       <div class="chat-topbar">
@@ -567,8 +553,11 @@ nav{position:sticky;top:0;z-index:100;background:rgba(240,235,224,.92);backdrop-
 let currentUser = null;
 let authMode = 'login';
 let documents = [];
+let chatHistory = [];
+let chats = {};
+let currentChatTitle = 'Chat 1';
+let chatCounter = 1;
 let messages = [];
-let currentChatTitle = 'New Chat';
 let quizData = {questions:[], current:0, answers:[], submitted:false};
 
 // ===== NAVIGATION =====
@@ -579,6 +568,16 @@ function showView(view) {
   });
   document.getElementById('main-nav').style.display = view === 'chat' ? 'none' : 'flex';
   if (view === 'chat') { document.getElementById('main-nav').style.display = 'flex'; }
+  if (view === 'chat') {
+    document.getElementById('chat-title').textContent = currentChatTitle;
+    document.getElementById('current-chat-title-sidebar').textContent = currentChatTitle;
+    messages = chats[currentChatTitle] || [];
+    renderMessages();
+    updateRecentChats();
+  }
+  if (view === 'dashboard') {
+    updateRecentChats();
+  }
 }
 
 function scrollToFeatures() { document.getElementById('features-section').scrollIntoView({behavior:'smooth'}); }
@@ -626,8 +625,13 @@ function logout() {
   currentUser = null;
   documents = [];
   messages = [];
+  chatHistory = [];
+  chats = {};
+  currentChatTitle = 'Chat 1';
+  chatCounter = 1;
   document.getElementById('nav-links-guest').classList.remove('hidden');
   document.getElementById('nav-links-user').classList.add('hidden');
+  updateRecentChats();
   showView('landing');
 }
 
@@ -704,20 +708,54 @@ function updateDocBadge() {
 }
 
 // ===== CHAT =====
+function updateRecentChats() {
+  const sidebarList = document.getElementById('sidebar-chat-list');
+  const dashboardSidebar = document.getElementById('dashboard-sidebar-chat-list');
+  const dashboardList = document.getElementById('dashboard-chat-list');
+  const renderSidebarItem = title => {
+    const safeTitle = title.replace(/'/g, "\\'");
+    return `<div class="sidebar-item" onclick="openChat('${safeTitle}')"><span class="si-icon">💬</span> ${title}</div>`;
+  };
+  const renderDashboardItem = title => {
+    const safeTitle = title.replace(/'/g, "\\'");
+    return `<div class="chat-item" onclick="openChat('${safeTitle}')">
+      <div class="ci-icon">💬</div>
+      <div><div class="ci-title">${title}</div><div class="ci-sub">${(chats[title]?.length || 0)} messages</div></div>
+    </div>`;
+  };
+  if (sidebarList) sidebarList.innerHTML = chatHistory
+    .filter(title => title !== currentChatTitle)
+    .map(renderSidebarItem)
+    .join('');
+  if (dashboardSidebar) dashboardSidebar.innerHTML = chatHistory.map(renderSidebarItem).join('');
+  if (dashboardList) dashboardList.innerHTML = chatHistory.map(renderDashboardItem).join('');
+}
+
 function openChat(title) {
   if (!currentUser) { openAuth('login'); return; }
   currentChatTitle = title;
+  if (!chats[currentChatTitle]) chats[currentChatTitle] = [];
+  messages = chats[currentChatTitle];
   document.getElementById('chat-title').textContent = title;
   document.getElementById('current-chat-title-sidebar').textContent = title;
   showView('chat');
+  renderMessages();
 }
 function newChat() {
-  currentChatTitle = 'New Chat';
-  document.getElementById('chat-title').textContent = 'New Chat';
-  document.getElementById('current-chat-title-sidebar').textContent = 'New Chat';
-  messages = [];
+  if (!currentUser) { openAuth('signup'); return; }
+  currentChatTitle = `Chat ${chatCounter}`;
+  if (!chats[currentChatTitle]) chats[currentChatTitle] = [];
+  if (!chatHistory.includes(currentChatTitle)) {
+    chatHistory.unshift(currentChatTitle);
+  }
+  messages = chats[currentChatTitle];
+  document.getElementById('chat-title').textContent = currentChatTitle;
+  document.getElementById('current-chat-title-sidebar').textContent = currentChatTitle;
   renderMessages();
   document.getElementById('chat-input').value = '';
+  updateRecentChats();
+  showView('chat');
+  chatCounter += 1;
 }
 
 function handleEnter(e) {
@@ -741,10 +779,23 @@ function sendMessage() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text) return;
-  addMessage('user', text);
+  if (!chats[currentChatTitle]) chats[currentChatTitle] = [];
+  if (!chatHistory.includes(currentChatTitle)) {
+    chatHistory.unshift(currentChatTitle);
+  }
+  updateRecentChats();
+  appendMessage('user', text);
   input.value = '';
   input.style.height = 'auto';
   callAI(text);
+}
+
+function appendMessage(role, content, citation) {
+  if (!chats[currentChatTitle]) chats[currentChatTitle] = [];
+  const message = { role, content, citation };
+  chats[currentChatTitle].push(message);
+  messages = chats[currentChatTitle];
+  addMessage(role, content, citation);
 }
 
 function addMessage(role, content, citation) {
@@ -793,6 +844,33 @@ function formatText(text) {
     .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')  // bold
     .replace(/\n/g, '<br>')                  // new lines
     .replace(/\d+\.\s/g, '<br><br>$&');      // spacing for lists
+}
+
+function renderMessages() {
+  const container = document.getElementById('messages-container');
+  if (!container) return;
+  if (!messages || messages.length === 0) {
+    container.innerHTML = `<div class="msg ai"><div class="msg-avatar">S</div><div><div class="msg-bubble"><strong>Welcome to ScholarAI!</strong><br><br>Upload your study documents below, then ask me anything:<br>• "Summarize this document"<br>• "Give me 5 MCQs from Chapter 2"<br>• "Explain this topic in simple English"</div></div></div>`;
+    return;
+  }
+  container.innerHTML = messages.map(m => {
+    const avatar = m.role === 'user' ? (currentUser?.name?.[0]?.toUpperCase()||'U') : 'S';
+    return `
+      <div class="msg ${m.role}">
+        <div class="msg-avatar">${avatar}</div>
+        <div>
+          <div class="msg-bubble">${m.content}</div>
+          ${m.citation ? `<div class="msg-citation">Source: ${m.citation}</div>` : ''}
+          ${m.role === 'ai' ? `<div class="msg-feedback">
+            <button class="fb-btn" onclick="feedback('up',this)">👍</button>
+            <button class="fb-btn" onclick="feedback('down',this)">👎</button>
+            <button class="fb-btn" onclick="feedback('wrong',this)">⚠ Wrong</button>
+            <button class="fb-btn" onclick="feedback('useless',this)">Not useful</button>
+          </div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+  container.scrollTop = container.scrollHeight;
 }
 
 async function extractPDFText(file, doc) {
@@ -844,18 +922,13 @@ async function callAI(userMsg) {
 
     hideTyping();
 
-    addMessage("ai", formatText(text));
+    appendMessage("ai", formatText(text));
 
   } catch (err) {
     console.error(err);
     hideTyping();
-    addMessage("ai", "Backend not working 😭");
+    appendMessage("ai", "Backend not working 😭");
   }
-}
-
-function renderMessages() {
-  const container = document.getElementById('messages-container');
-  container.innerHTML = `<div class="msg ai"><div class="msg-avatar">S</div><div><div class="msg-bubble"><strong>Welcome to ScholarAI!</strong><br><br>Upload your study documents below, then ask me anything:<br>• "Summarize this document"<br>• "Give me 5 MCQs from Chapter 2"<br>• "Explain this topic in simple English"</div></div></div>`;
 }
 
 // ===== QUIZ =====
@@ -896,12 +969,20 @@ async function startQuiz() {
       body: JSON.stringify({ message: prompt })
     });
 
+    if (!response.ok) {
+      throw new Error(`Quiz API error ${response.status}`);
+    }
+
     const data = await response.json();
     const raw = (data.reply || '').replace(/```json|```/g, '').trim();
-    const parsed = extractJSONFromString(raw);
+    let parsed = extractJSONFromString(raw);
     let qs = normalizeQuizQuestions(parsed || []);
     if (!qs.length) {
       qs = normalizeQuizQuestions(parseQuizFromText(raw));
+    }
+    if (!qs.length) {
+      const looseParsed = tryParseLooseJSON(raw);
+      qs = normalizeQuizQuestions(looseParsed || []);
     }
     if (!qs.length) {
       throw new Error('Generated quiz contained no valid questions');
@@ -935,11 +1016,30 @@ function extractJSONFromString(text) {
         const candidate = cleaned.slice(start, end + 1);
         try {
           return JSON.parse(candidate);
-        } catch (_) {}
+        } catch (_) {
+          try {
+            return JSON.parse(candidate.replace(/'/g, '"'));
+          } catch (_) {}
+        }
       }
     }
     return null;
   }
+}
+
+function tryParseLooseJSON(text) {
+  if (!text) return null;
+  const matches = [...text.matchAll(/\[.*?\]/gs)].map(m => m[0]);
+  for (const match of matches) {
+    try {
+      return JSON.parse(match);
+    } catch (_) {
+      try {
+        return JSON.parse(match.replace(/'/g, '"'));
+      } catch (_) {}
+    }
+  }
+  return null;
 }
 
 function parseQuizFromText(text) {
@@ -949,7 +1049,7 @@ function parseQuizFromText(text) {
   let current = null;
   lines.forEach(line => {
     const questionMatch = /^(?:\d+\.|\d+\)|Question\s+\d+[:\.]|Q\d+\.)\s*(.*)/i.exec(line);
-    const optionMatch = /^([A-D])[\.\)]\s*(.*)/i.exec(line);
+    const optionMatch = /^([A-D])[\.\):]?\s*(.*)/i.exec(line);
     const answerMatch = /^(?:Answer|Correct answer|Key)[:\s]+([A-D])/i.exec(line);
     const explanationMatch = /^(?:Explanation|Explain|Reason)[:\s]*(.*)/i.exec(line);
 
